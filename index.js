@@ -38,10 +38,9 @@ async function run() {
 
     const jobsCollections = client.db("eCommerceForStudent").collection('AllJobs')
 
-
-
     app.post("/allJobs", async(req,res)=>{
-        const jobCollection = req.params.body 
+        const jobCollection = req.body
+        
         const result = await jobsCollections.insertOne(jobCollection)
         res.send(result)
     })
