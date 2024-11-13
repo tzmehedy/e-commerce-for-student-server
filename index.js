@@ -105,13 +105,43 @@ async function run() {
 
     app.get("/myPostedJobs/:email", async(req,res)=>{
       const email = req.params.email 
-
       const query = {email: email}
-
       const result = await jobsCollections.find(query).toArray()
+      res.send(result)
+    })
+
+    app.delete("/myPostedJobs/:id", async(req,res)=>{
+      const id = req.params.id
+      const query = {_id: new ObjectId(id)}
+      const result = await jobsCollections.deleteOne(query)
+      res.send(result)
+    })
+
+    app.put("/updatedJob/:id", async(req, res)=>{
+      const id = req.params.id
+
+      const updatedJob = req.body
+
+      const query = {_id: new ObjectId(id)}
+
+      const option = {upsert:true}
+
+      const updatedJobInfo = {
+        $set: {
+          email: updatedJob.email,
+          title: updatedJob.title,
+          deadline: updatedJob.deadline,
+          category: updatedJob.category,
+          description: updatedJob.description,
+          minimumPrice: updatedJob.minimumPrice,
+          maximumPrice: updatedJob.maximumPrice
+        },
+      };
+
+
+      const result = await jobsCollections.updateOne(query, updatedJobInfo,option)
 
       res.send(result)
-      
     })
 
 
