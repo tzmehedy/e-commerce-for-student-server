@@ -145,17 +145,12 @@ async function run() {
     })
 
 
-
-
-
-
-    
-    
-
-
-
-
-
+    app.get("/bidRequest/:email", async(req,res)=>{
+      const email = req.params.email
+      const allBids = await bidCollections.find().toArray()
+      const result = allBids.filter((bid) => bid.buyerEmail === email);
+      res.send(result)
+    })
 
 
     client.db("admin").command({ ping: 1 });
