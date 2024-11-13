@@ -30,29 +30,46 @@ const client = new MongoClient(uri, {
   },
 });
 
-const jobsCollections = client.db("eCommerceForStudent").collection("AllJobs");
+
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    client.connect();
-    // Send a ping to confirm a successful connection
 
+    const jobsCollections = client.db("eCommerceForStudent").collection("AllJobs");
+
+    const bidCollections = client.db("eCommerceForStudent").collection("BidJobs")
     
 
+    // Post Data
 
-
-    app.get("/allJobs", async(req,res)=>{
-      const result = await jobsCollections.find().toArray()
-      res.send(result)
-      
+    app.post("/allJobs", async(req,res)=>{
+        const jobCollection = req.body
+        
+        const result = await jobsCollections.insertOne(jobCollection)
+        res.send(result)
     })
 
-    app.get("/webDevelopment", async(req,res)=>{
-      const query = { category: "Web Development" }
-      const result = await jobsCollections.find(query).toArray()
-      res.send(result)
+    app.post("/allBids", async(req, res)=>{
+      const bidCollectionsData = req.body 
+      const result = await bidCollections.insertOne(bidCollectionsData) 
+      res.send(result) 
     })
+
+
+
+
+    // Get Data
+
+    app.get("/allJobs", async (req, res) => {
+      const result = await jobsCollections.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/webDevelopment", async (req, res) => {
+      const query = { category: "Web Development" };
+      const result = await jobsCollections.find(query).toArray();
+      res.send(result);
+    });
     app.get("/graphicsDesign", async (req, res) => {
       const query = { category: "Graphics Design" };
       const result = await jobsCollections.find(query).toArray();
@@ -75,24 +92,31 @@ async function run() {
     });
     app.get("/writingTranslation", async (req, res) => {
       const query = { category: "Writing And Translation" };
-      const result = await jobsCollections.find(query).toArray()
+      const result = await jobsCollections.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/jobDetails/:id", async(req, res)=>{
-      const id = req.params.id 
-      const query = {_id: new ObjectId(id)}
-      const result = await jobsCollections.findOne(query)
+    app.get("/jobDetails/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollections.findOne(query);
+      res.send(result);
+    });
+
+    app.get("/myPostedJobs/:email", async(req,res)=>{
+      const email = req.params.email 
+
+      const query = {email: email}
+
+      const result = await jobsCollections.find(query).toArray()
+
       res.send(result)
-
+      
     })
 
-    app.post("/allJobs", async(req,res)=>{
-        const jobCollection = req.body
-        
-        const result = await jobsCollections.insertOne(jobCollection)
-        res.send(result)
-    })
+
+
+
 
 
     
