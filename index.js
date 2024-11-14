@@ -1,4 +1,6 @@
 const express = require('express')
+const jwt = require('jsonwebtoken')
+const cookieParser = require('cookie-parser')
 const app = express()
 const cors = require("cors")
 require('dotenv').config()
@@ -7,8 +9,14 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000
 
 
-app.use(cors())
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:5000"],
+  credentials: true,
+};
+
+app.use(cors( corsOptions ));
 app.use(express.json())
+app.use(cookieParser())
 
 
 app.get("/", (req, res) => {
@@ -31,32 +39,84 @@ const client = new MongoClient(uri, {
 });
 
 
+const verifyToken = (req, res, next)=>{
+  const token = req.cookies.token
+  if(!token) return res.status(401).send({message:"Unauthorized Access"})
+  if (token) {
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+      if (err) {
+        return res.status(401).send({ message: "Unauthorized Access" })
+      }
+      req.user = decoded
+      next()
+    });
+  }
+
+}
+
+
 
 async function run() {
   try {
+    const jobsCollections = client
+      .db("eCommerceForStudent")
+      .collection("AllJobs");
 
-    const jobsCollections = client.db("eCommerceForStudent").collection("AllJobs");
+    const bidCollections = client
+      .db("eCommerceForStudent")
+      .collection("BidJobs");
 
-    const bidCollections = client.db("eCommerceForStudent").collection("BidJobs")
-    
+
+
+
+
+    // Jwt implementation
+    app.post("/jwt", async(req,res)=>{
+      const user = req.body
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN,{expiresIn: "2h"})
+
+      res
+      .cookie('token',token,{
+        httpOnly:true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV ==='production' ? 'none': 'strict'
+      })
+      .send({ success:true });
+    })
+
+
+    // Delete token while logout
+
+    app.get("/logout", (req, res)=>{
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+          maxAge: 0
+        })
+        .send({ success: true });
+    })
+
+
+
+
+
 
     // Post Data
 
-    app.post("/allJobs", async(req,res)=>{
-        const jobCollection = req.body
-        
-        const result = await jobsCollections.insertOne(jobCollection)
-        res.send(result)
-    })
+    app.post("/allJobs", async (req, res) => {
+      const jobCollection = req.body;
 
-    app.post("/allBids", async(req, res)=>{
-      const bidCollectionsData = req.body 
-      const result = await bidCollections.insertOne(bidCollectionsData) 
-      res.send(result) 
-    })
+      const result = await jobsCollections.insertOne(jobCollection);
+      res.send(result);
+    });
 
-
-
+    app.post("/allBids", async (req, res) => {
+      const bidCollectionsData = req.body;
+      const result = await bidCollections.insertOne(bidCollectionsData);
+      res.send(result);
+    });
 
     // Get Data
 
@@ -103,28 +163,32 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/myPostedJobs/:email", async(req,res)=>{
-      const email = req.params.email 
-      const query = {email: email}
-      const result = await jobsCollections.find(query).toArray()
-      res.send(result)
-    })
+    app.get("/myPostedJobs/:email", verifyToken,  async (req, res) => {
+      const email = req.params.email;
+      if(req.user.email !== email ){
+        return res.status(403).send({message:"Access Forbidden"})
 
-    app.delete("/myPostedJobs/:id", async(req,res)=>{
-      const id = req.params.id
-      const query = {_id: new ObjectId(id)}
-      const result = await jobsCollections.deleteOne(query)
-      res.send(result)
-    })
+      }
+      const query = { email: email };
+      const result = await jobsCollections.find(query).toArray();
+      res.send(result);
+    });
 
-    app.put("/updatedJob/:id", async(req, res)=>{
-      const id = req.params.id
+    app.delete("/myPostedJobs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobsCollections.deleteOne(query);
+      res.send(result);
+    });
 
-      const updatedJob = req.body
+    app.put("/updatedJob/:id", async (req, res) => {
+      const id = req.params.id;
 
-      const query = {_id: new ObjectId(id)}
+      const updatedJob = req.body;
 
-      const option = {upsert:true}
+      const query = { _id: new ObjectId(id) };
+
+      const option = { upsert: true };
 
       const updatedJobInfo = {
         $set: {
@@ -134,32 +198,46 @@ async function run() {
           category: updatedJob.category,
           description: updatedJob.description,
           minimumPrice: updatedJob.minimumPrice,
-          maximumPrice: updatedJob.maximumPrice
+          maximumPrice: updatedJob.maximumPrice,
         },
       };
 
+      const result = await jobsCollections.updateOne(
+        query,
+        updatedJobInfo,
+        option
+      );
 
-      const result = await jobsCollections.updateOne(query, updatedJobInfo,option)
+      res.send(result);
+    });
 
-      res.send(result)
-    })
+    app.get("/bidRequest/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { buyerEmail: email };
+      const result = await bidCollections.find(query).toArray();
+      res.send(result);
+    });
 
+    app.get("/myBids/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { sellerEmail: email };
+      const result = await bidCollections.find(query).toArray();
+      res.send(result);
+    });
 
-    app.get("/bidRequest/:email", async(req,res)=>{
-      const email = req.params.email
-      const query = {buyerEmail: email}
-      const result = await bidCollections.find(query).toArray()
-      res.send(result)
-    })
-
-    app.get("/myBids/:email", async(req,res)=>{
-      const email = req.params.email
-      console.log(email) 
-      const query = {sellerEmail:email}
-      const result = await bidCollections.find(query).toArray()
-      res.send(result)
-    })
-
+    app.patch("/updateStatus/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: status.currentStatus,
+        },
+      };
+      const result = await bidCollections.updateOne(query, updateDoc);
+      res.send(result);
+    });
 
     client.db("admin").command({ ping: 1 });
     console.log(
