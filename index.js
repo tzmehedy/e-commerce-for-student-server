@@ -147,8 +147,16 @@ async function run() {
 
     app.get("/bidRequest/:email", async(req,res)=>{
       const email = req.params.email
-      const allBids = await bidCollections.find().toArray()
-      const result = allBids.filter((bid) => bid.buyerEmail === email);
+      const query = {buyerEmail: email}
+      const result = await bidCollections.find(query).toArray()
+      res.send(result)
+    })
+
+    app.get("/myBids/:email", async(req,res)=>{
+      const email = req.params.email
+      console.log(email) 
+      const query = {sellerEmail:email}
+      const result = await bidCollections.find(query).toArray()
       res.send(result)
     })
 
