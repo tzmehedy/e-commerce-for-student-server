@@ -125,13 +125,15 @@ async function run() {
     // Get Data
 
     app.get("/all-Jobs", async (req, res) => {
-      const result = await jobsCollections.find().toArray();
+      const size = parseInt(req.query.size)
+      const page = parseInt(req.query.page) - 1
+      const result = await jobsCollections.find().skip(page*size).limit(size).toArray();
       res.send(result);
     });
 
     app.get("/allJobs-count", async(req,res)=>{
-      const result = await jobsCollections.countDocuments()
-      res.send(result)
+      const count = await jobsCollections.countDocuments()
+      res.send({count})
     })
 
     app.get("/allJobsByCategory", async(req, res)=>{
