@@ -10,7 +10,11 @@ const port = process.env.PORT || 5000
 
 
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5000"],
+  origin: [
+    "http://localhost:5174",
+    "http://localhost:5000",
+    "http://localhost:5173",
+  ],
   credentials: true,
 };
 
@@ -120,41 +124,22 @@ async function run() {
 
     // Get Data
 
-    app.get("/allJobs", async (req, res) => {
+    app.get("/all-Jobs", async (req, res) => {
       const result = await jobsCollections.find().toArray();
       res.send(result);
     });
 
-    app.get("/webDevelopment", async (req, res) => {
-      const query = { category: "Web Development" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
-    app.get("/graphicsDesign", async (req, res) => {
-      const query = { category: "Graphics Design" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
-    app.get("/videoEditing", async (req, res) => {
-      const query = { category: "Video Editing" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
-    app.get("/digitalMarketing", async (req, res) => {
-      const query = { category: "Digital Marketing" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
-    app.get("/aiServices", async (req, res) => {
-      const query = { category: "Ai Services" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
-    app.get("/writingTranslation", async (req, res) => {
-      const query = { category: "Writing And Translation" };
-      const result = await jobsCollections.find(query).toArray();
-      res.send(result);
-    });
+    app.get("/allJobs-count", async(req,res)=>{
+      const result = await jobsCollections.countDocuments()
+      res.send(result)
+    })
+
+    app.get("/allJobsByCategory", async(req, res)=>{
+      const category = req.query.category
+      const query = {category: category}
+      const result = await jobsCollections.find(query).toArray()
+      res.send(result)
+    })
 
     app.get("/jobDetails/:id", async (req, res) => {
       const id = req.params.id;
@@ -174,14 +159,14 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/myPostedJobs/:id", async (req, res) => {
+    app.delete("/myPostedJobs/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await jobsCollections.deleteOne(query);
       res.send(result);
     });
 
-    app.put("/updatedJob/:id", async (req, res) => {
+    app.put("/updatedJob/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const updatedJob = req.body;
@@ -211,14 +196,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/bidRequest/:email", async (req, res) => {
+    app.get("/bidRequest/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { buyerEmail: email };
       const result = await bidCollections.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/myBids/:email", async (req, res) => {
+    app.get("/myBids/:email",verifyToken, async (req, res) => {
       const email = req.params.email;
       console.log(email);
       const query = { sellerEmail: email };
@@ -226,13 +211,13 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/updateStatus/:id", async (req, res) => {
+    app.patch("/updateStatus/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const status = req.body;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          status: status.currentStatus,
+          status: status.status,
         },
       };
       const result = await bidCollections.updateOne(query, updateDoc);
