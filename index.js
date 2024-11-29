@@ -1,6 +1,8 @@
 const express = require('express')
+const SSLCommerzPayment = require("sslcommerz-lts");
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
+
 const app = express()
 const cors = require("cors")
 require('dotenv').config()
@@ -8,19 +10,25 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 5000
 
-
-const corsOptions = {
-  origin: [
-    "http://localhost:5174",
-    "http://localhost:5000",
-    "http://localhost:5173",
-  ],
-  credentials: true,
-};
-
-app.use(cors( corsOptions ));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5174",
+      "http://localhost:5000",
+      "http://localhost:5173",
+      "https://ecommerceforstudent.web.app/",
+    ],
+    credentials: true,
+  })
+);
 app.use(express.json())
 app.use(cookieParser())
+
+
+
+const store_id = `${process.env.STORE_ID}`;
+const store_passwd = `${process.env.STORE_PASS}`;
+const is_live = false //true for live, false for sandbox
 
 
 app.get("/", (req, res) => {
@@ -82,7 +90,7 @@ async function run() {
       res
       .cookie('token',token,{
         httpOnly:true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === 'production' ? true :false,
         sameSite: process.env.NODE_ENV ==='production' ? 'none': 'strict'
       })
       .send({ success:true });
@@ -95,7 +103,7 @@ async function run() {
       res
         .clearCookie("token", {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: process.env.NODE_ENV === "production"? true:false,
           sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
           maxAge: 0
         })
@@ -121,6 +129,53 @@ async function run() {
       const result = await bidCollections.insertOne(bidCollectionsData);
       res.send(result);
     });
+
+    app.post("/order", async(req,res)=>{
+      const id = (req.body.id)
+      const query = {_id: new ObjectId(id)}
+      const result = await bidCollections.findOne(query)
+
+      const trans_id = new ObjectId().toString()
+
+      const data = {
+        total_amount: result.offerPrice,
+        currency: "BDT",
+        tran_id: trans_id, // use unique tran_id for each api call
+        success_url: "http://localhost:3030/success",
+        fail_url: "http://localhost:3030/fail",
+        cancel_url: "http://localhost:3030/cancel",
+        ipn_url: "http://localhost:3030/ipn",
+        shipping_method: "Courier",
+        product_name: "Computer.",
+        product_category: "Electronic",
+        product_profile: "general",
+        cus_name: "Customer Name",
+        cus_email: result.buyerEmail,
+        cus_add1: "Dhaka",
+        cus_add2: "Dhaka",
+        cus_city: "Dhaka",
+        cus_state: "Dhaka",
+        cus_postcode: "1000",
+        cus_country: "Bangladesh",
+        cus_phone: "01711111111",
+        cus_fax: "01711111111",
+        ship_name: "Customer Name",
+        ship_add1: "Dhaka",
+        ship_add2: "Dhaka",
+        ship_city: "Dhaka",
+        ship_state: "Dhaka",
+        ship_postcode: 1000,
+        ship_country: "Bangladesh",
+      };
+      const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+      sslcz.init(data).then((apiResponse) => {
+        // Redirect the user to payment gateway
+        let GatewayPageURL = apiResponse.GatewayPageURL;
+        console.log(GatewayPageURL)
+        res.send({ url: GatewayPageURL });
+      });
+
+    })
 
     // Get Data
 
