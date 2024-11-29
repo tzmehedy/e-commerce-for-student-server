@@ -141,7 +141,7 @@ async function run() {
         total_amount: result.offerPrice,
         currency: "BDT",
         tran_id: trans_id, // use unique tran_id for each api call
-        success_url: "http://localhost:3030/success",
+        success_url: `http://localhost:5000/payment/success/${id}`,
         fail_url: "http://localhost:3030/fail",
         cancel_url: "http://localhost:3030/cancel",
         ipn_url: "http://localhost:3030/ipn",
@@ -171,9 +171,24 @@ async function run() {
       sslcz.init(data).then((apiResponse) => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
-        console.log(GatewayPageURL)
         res.send({ url: GatewayPageURL });
       });
+
+    })
+
+
+    app.post("/payment/success/:id", async(req,res)=>{
+      const id = req.params.id 
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: "In Progress",
+        },
+      };
+      const result = await bidCollections.updateOne(query, updateDoc)
+      if(result.modifiedCount>0){
+        res.redirect("http://localhost:5173/payment/success")
+      }
 
     })
 
